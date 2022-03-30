@@ -273,6 +273,7 @@ func (e *matchingEngineImpl) AddWorkflowTask(
 		RunId:       addRequest.Execution.GetRunId(),
 		WorkflowId:  addRequest.Execution.GetWorkflowId(),
 		ScheduleId:  addRequest.GetScheduleId(),
+		Clock:       addRequest.GetClock(),
 		ExpiryTime:  expirationTime,
 		CreateTime:  now,
 	}
@@ -325,6 +326,7 @@ func (e *matchingEngineImpl) AddActivityTask(
 		RunId:       runID,
 		WorkflowId:  addRequest.Execution.GetWorkflowId(),
 		ScheduleId:  addRequest.GetScheduleId(),
+		Clock:       addRequest.GetClock(),
 		CreateTime:  now,
 		ExpiryTime:  expirationTime,
 	}
@@ -848,6 +850,7 @@ func (e *matchingEngineImpl) recordWorkflowTaskStarted(
 		NamespaceId:       task.event.Data.GetNamespaceId(),
 		WorkflowExecution: task.workflowExecution(),
 		ScheduleId:        task.event.Data.GetScheduleId(),
+		Clock:             task.event.Data.GetClock(),
 		TaskId:            task.event.GetTaskId(),
 		RequestId:         uuid.New(),
 		PollRequest:       pollReq,
@@ -877,6 +880,7 @@ func (e *matchingEngineImpl) recordActivityTaskStarted(
 		NamespaceId:       task.event.Data.GetNamespaceId(),
 		WorkflowExecution: task.workflowExecution(),
 		ScheduleId:        task.event.Data.GetScheduleId(),
+		Clock:             task.event.Data.GetClock(),
 		TaskId:            task.event.GetTaskId(),
 		RequestId:         uuid.New(),
 		PollRequest:       pollReq,
