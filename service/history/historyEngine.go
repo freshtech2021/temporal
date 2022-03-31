@@ -2417,6 +2417,18 @@ func (e *historyEngineImpl) RecordChildExecutionCompleted(
 	completionRequest *historyservice.RecordChildExecutionCompletedRequest,
 ) error {
 
+	currentClock, err := e.shard.GenerateTaskID()
+	if err != nil {
+		return err
+	}
+	if completionRequest.GetClock() >= currentClock {
+		e.shard.Unload()
+		return &persistence.ShardOwnershipLostError{
+			ShardID: e.shard.GetShardID(),
+			Msg:     "stale shard",
+		}
+	}
+
 	namespaceEntry, err := e.getActiveNamespaceEntry(namespace.ID(completionRequest.GetNamespaceId()))
 	if err != nil {
 		return err

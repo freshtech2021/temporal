@@ -31,4 +31,5 @@ message ParentExecutionInfo {
     string namespace = 2;
     temporal.api.common.v1.WorkflowExecution execution = 3;
     int64 initiated_id = 4;
+    int64 clock = 5;
 }

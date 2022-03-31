@@ -129,6 +129,7 @@ message WorkflowExecutionInfo {
     google.protobuf.Timestamp execution_time = 60 [(gogoproto.stdtime) = true];
     // If continued-as-new, or retried, or cron, holds the new run id.
     string new_execution_run_id = 61;
+    int64 parent_clock = 62;
 }
 
 message ExecutionStats {

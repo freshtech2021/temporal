@@ -187,6 +187,7 @@ func SetupNewWorkflowForRetryOrCron(
 				RunId:      previousExecutionInfo.ParentRunId,
 			},
 			InitiatedId: previousExecutionInfo.InitiatedId,
+			Clock:       previousExecutionInfo.ParentClock,
 		}
 	}
 

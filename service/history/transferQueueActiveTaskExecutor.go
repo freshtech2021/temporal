@@ -301,6 +301,7 @@ func (t *transferQueueActiveTaskExecutor) processCloseExecution(
 	parentWorkflowID := executionInfo.ParentWorkflowId
 	parentRunID := executionInfo.ParentRunId
 	initiatedID := executionInfo.InitiatedId
+	parentClock := executionInfo.ParentClock
 
 	workflowTypeName := executionInfo.WorkflowTypeName
 	workflowCloseTime := wfCloseTime
@@ -346,6 +347,7 @@ func (t *transferQueueActiveTaskExecutor) processCloseExecution(
 				RunId:      parentRunID,
 			},
 			InitiatedId: initiatedID,
+			Clock:       parentClock,
 			CompletedExecution: &commonpb.WorkflowExecution{
 				WorkflowId: task.WorkflowID,
 				RunId:      task.RunID,
@@ -1227,6 +1229,7 @@ func (t *transferQueueActiveTaskExecutor) startWorkflowWithRetry(
 				RunId:      task.RunID,
 			},
 			InitiatedId: task.InitiatedID,
+			Clock:       task.TaskID,
 		},
 		t.shard.GetTimeSource().Now(),
 	)

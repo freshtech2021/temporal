@@ -143,6 +143,7 @@ func (b *MutableStateRebuilderImpl) ApplyEvents(
 
 			if err := b.mutableState.ReplicateWorkflowExecutionStartedEvent(
 				parentNamespaceID,
+				0,
 				execution,
 				requestID,
 				event,

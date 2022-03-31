@@ -1484,6 +1484,7 @@ func (e *MutableStateImpl) AddWorkflowExecutionStartedEventWithOptions(
 	)
 	if err := e.ReplicateWorkflowExecutionStartedEvent(
 		parentNamespaceID,
+		startRequest.GetParentExecutionInfo().GetClock(),
 		execution,
 		startRequest.StartRequest.GetRequestId(),
 		event,
@@ -1509,6 +1510,7 @@ func (e *MutableStateImpl) AddWorkflowExecutionStartedEventWithOptions(
 
 func (e *MutableStateImpl) ReplicateWorkflowExecutionStartedEvent(
 	parentNamespaceID namespace.ID,
+	parentClock int64,
 	execution commonpb.WorkflowExecution,
 	requestID string,
 	startEvent *historypb.HistoryEvent,
@@ -1547,6 +1549,7 @@ func (e *MutableStateImpl) ReplicateWorkflowExecutionStartedEvent(
 	if event.ParentWorkflowExecution != nil {
 		e.executionInfo.ParentWorkflowId = event.ParentWorkflowExecution.GetWorkflowId()
 		e.executionInfo.ParentRunId = event.ParentWorkflowExecution.GetRunId()
+		e.executionInfo.ParentClock = parentClock
 	}
 
 	if event.ParentInitiatedEventId != 0 {
@@ -3100,6 +3103,7 @@ func (e *MutableStateImpl) AddContinueAsNewEvent(
 				RunId:      e.executionInfo.ParentRunId,
 			},
 			InitiatedId: e.executionInfo.InitiatedId,
+			Clock:       e.executionInfo.ParentClock,
 		}
 	}
 
