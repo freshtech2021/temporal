@@ -94,7 +94,7 @@ type (
 		AddChildWorkflowExecutionCanceledEvent(int64, *commonpb.WorkflowExecution, *historypb.WorkflowExecutionCanceledEventAttributes) (*historypb.HistoryEvent, error)
 		AddChildWorkflowExecutionCompletedEvent(int64, *commonpb.WorkflowExecution, *historypb.WorkflowExecutionCompletedEventAttributes) (*historypb.HistoryEvent, error)
 		AddChildWorkflowExecutionFailedEvent(int64, *commonpb.WorkflowExecution, *historypb.WorkflowExecutionFailedEventAttributes) (*historypb.HistoryEvent, error)
-		AddChildWorkflowExecutionStartedEvent(namespace.Name, *commonpb.WorkflowExecution, *commonpb.WorkflowType, int64, *commonpb.Header) (*historypb.HistoryEvent, error)
+		AddChildWorkflowExecutionStartedEvent(namespace.Name, *commonpb.WorkflowExecution, *commonpb.WorkflowType, int64, *commonpb.Header, int64) (*historypb.HistoryEvent, error)
 		AddChildWorkflowExecutionTerminatedEvent(int64, *commonpb.WorkflowExecution, *historypb.WorkflowExecutionTerminatedEventAttributes) (*historypb.HistoryEvent, error)
 		AddChildWorkflowExecutionTimedOutEvent(int64, *commonpb.WorkflowExecution, *historypb.WorkflowExecutionTimedOutEventAttributes) (*historypb.HistoryEvent, error)
 		AddCompletedWorkflowEvent(int64, *commandpb.CompleteWorkflowExecutionCommandAttributes, string) (*historypb.HistoryEvent, error)
@@ -199,7 +199,7 @@ type (
 		ReplicateChildWorkflowExecutionCanceledEvent(*historypb.HistoryEvent) error
 		ReplicateChildWorkflowExecutionCompletedEvent(*historypb.HistoryEvent) error
 		ReplicateChildWorkflowExecutionFailedEvent(*historypb.HistoryEvent) error
-		ReplicateChildWorkflowExecutionStartedEvent(*historypb.HistoryEvent) error
+		ReplicateChildWorkflowExecutionStartedEvent(*historypb.HistoryEvent, int64) error
 		ReplicateChildWorkflowExecutionTerminatedEvent(*historypb.HistoryEvent) error
 		ReplicateChildWorkflowExecutionTimedOutEvent(*historypb.HistoryEvent) error
 		ReplicateWorkflowTaskCompletedEvent(*historypb.HistoryEvent) error

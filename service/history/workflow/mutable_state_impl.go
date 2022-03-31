@@ -3252,6 +3252,7 @@ func (e *MutableStateImpl) AddChildWorkflowExecutionStartedEvent(
 	workflowType *commonpb.WorkflowType,
 	initiatedID int64,
 	header *commonpb.Header,
+	clock int64,
 ) (*historypb.HistoryEvent, error) {
 
 	opTag := tag.WorkflowActionChildWorkflowStarted
@@ -3276,7 +3277,7 @@ func (e *MutableStateImpl) AddChildWorkflowExecutionStartedEvent(
 		workflowType,
 		header,
 	)
-	if err := e.ReplicateChildWorkflowExecutionStartedEvent(event); err != nil {
+	if err := e.ReplicateChildWorkflowExecutionStartedEvent(event, clock); err != nil {
 		return nil, err
 	}
 	return event, nil
@@ -3284,6 +3285,7 @@ func (e *MutableStateImpl) AddChildWorkflowExecutionStartedEvent(
 
 func (e *MutableStateImpl) ReplicateChildWorkflowExecutionStartedEvent(
 	event *historypb.HistoryEvent,
+	clock int64,
 ) error {
 
 	attributes := event.GetChildWorkflowExecutionStartedEventAttributes()
@@ -3300,6 +3302,7 @@ func (e *MutableStateImpl) ReplicateChildWorkflowExecutionStartedEvent(
 
 	ci.StartedId = event.GetEventId()
 	ci.StartedRunId = attributes.GetWorkflowExecution().GetRunId()
+	ci.Clock = clock
 	e.updateChildExecutionInfos[ci.InitiatedId] = ci
 
 	return nil

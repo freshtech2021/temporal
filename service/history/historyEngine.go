@@ -501,7 +501,7 @@ func (e *historyEngineImpl) generateFirstWorkflowTask(
 func (e *historyEngineImpl) StartWorkflowExecution(
 	ctx context.Context,
 	startRequest *historyservice.StartWorkflowExecutionRequest,
-) (resp *historyservice.StartWorkflowExecutionResponse, retError error) {
+) (_ *historyservice.StartWorkflowExecutionResponse, retError error) {
 
 	namespaceEntry, err := e.getActiveNamespaceEntry(namespace.ID(startRequest.GetNamespaceId()))
 	if err != nil {
@@ -555,6 +555,10 @@ func (e *historyEngineImpl) StartWorkflowExecution(
 	createMode := persistence.CreateWorkflowModeBrandNew
 	prevRunID := ""
 	prevLastWriteVersion := int64(0)
+	clock, err := e.shard.GenerateTaskID()
+	if err != nil {
+		return nil, err
+	}
 	err = weContext.CreateWorkflowExecution(
 		ctx,
 		now,
@@ -568,6 +572,7 @@ func (e *historyEngineImpl) StartWorkflowExecution(
 	if err == nil {
 		return &historyservice.StartWorkflowExecutionResponse{
 			RunId: execution.GetRunId(),
+			Clock: clock,
 		}, nil
 	}
 
@@ -580,6 +585,7 @@ func (e *historyEngineImpl) StartWorkflowExecution(
 	if t.RequestID == request.GetRequestId() {
 		return &historyservice.StartWorkflowExecutionResponse{
 			RunId: t.RunID,
+			Clock: clock,
 		}, nil
 		// delete history is expected here because duplicate start request will create history with different rid
 	}
@@ -626,6 +632,7 @@ func (e *historyEngineImpl) StartWorkflowExecution(
 		case nil:
 			return &historyservice.StartWorkflowExecutionResponse{
 				RunId: execution.GetRunId(),
+				Clock: clock,
 			}, nil
 		case consts.ErrWorkflowCompleted:
 			// previous workflow already closed
@@ -649,6 +656,7 @@ func (e *historyEngineImpl) StartWorkflowExecution(
 	}
 	return &historyservice.StartWorkflowExecutionResponse{
 		RunId: execution.GetRunId(),
+		Clock: clock,
 	}, nil
 }
 
@@ -1491,6 +1499,17 @@ func (e *historyEngineImpl) ScheduleWorkflowTask(
 	ctx context.Context,
 	req *historyservice.ScheduleWorkflowTaskRequest,
 ) error {
+	currentClock, err := e.shard.GenerateTaskID()
+	if err != nil {
+		return err
+	}
+	if req.GetClock() >= currentClock {
+		e.shard.Unload()
+		return &persistence.ShardOwnershipLostError{
+			ShardID: e.shard.GetShardID(),
+			Msg:     "stale shard",
+		}
+	}
 	return e.workflowTaskHandler.handleWorkflowTaskScheduled(ctx, req)
 }
 

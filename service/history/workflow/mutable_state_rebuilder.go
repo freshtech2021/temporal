@@ -387,6 +387,7 @@ func (b *MutableStateRebuilderImpl) ApplyEvents(
 		case enumspb.EVENT_TYPE_CHILD_WORKFLOW_EXECUTION_STARTED:
 			if err := b.mutableState.ReplicateChildWorkflowExecutionStartedEvent(
 				event,
+				0,
 			); err != nil {
 				return nil, err
 			}

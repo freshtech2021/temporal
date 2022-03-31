@@ -662,10 +662,10 @@ func (t *transferQueueActiveTaskExecutor) processStartChildExecution(
 		// release the context lock since we no longer need mutable state builder and
 		// the rest of logic is making RPC call, which takes time.
 		release(nil)
-		return t.createFirstWorkflowTask(task.TargetNamespaceID, childExecution)
+		return t.createFirstWorkflowTask(task.TargetNamespaceID, childExecution, childInfo.Clock)
 	}
 
-	childRunID, err := t.startWorkflowWithRetry(
+	childRunID, clock, err := t.startWorkflowWithRetry(
 		task,
 		parentNamespaceName,
 		targetNamespaceName,
@@ -688,7 +688,7 @@ func (t *transferQueueActiveTaskExecutor) processStartChildExecution(
 		tag.WorkflowID(attributes.WorkflowId), tag.WorkflowRunID(childRunID))
 
 	// Child execution is successfully started, record ChildExecutionStartedEvent in parent execution
-	err = t.recordChildExecutionStarted(ctx, task, context, attributes, childRunID)
+	err = t.recordChildExecutionStarted(ctx, task, context, attributes, childRunID, clock)
 	if err != nil {
 		return err
 	}
@@ -697,10 +697,14 @@ func (t *transferQueueActiveTaskExecutor) processStartChildExecution(
 	// release the context lock since we no longer need mutable state builder and
 	// the rest of logic is making RPC call, which takes time.
 	release(nil)
-	return t.createFirstWorkflowTask(task.TargetNamespaceID, &commonpb.WorkflowExecution{
-		WorkflowId: task.TargetWorkflowID,
-		RunId:      childRunID,
-	})
+	return t.createFirstWorkflowTask(
+		task.TargetNamespaceID,
+		&commonpb.WorkflowExecution{
+			WorkflowId: task.TargetWorkflowID,
+			RunId:      childRunID,
+		},
+		clock,
+	)
 }
 
 func (t *transferQueueActiveTaskExecutor) processResetWorkflow(
@@ -841,6 +845,7 @@ func (t *transferQueueActiveTaskExecutor) recordChildExecutionStarted(
 	context workflow.Context,
 	initiatedAttributes *historypb.StartChildWorkflowExecutionInitiatedEventAttributes,
 	runID string,
+	clock int64,
 ) error {
 
 	return t.updateWorkflowExecution(ctx, context, true,
@@ -864,6 +869,7 @@ func (t *transferQueueActiveTaskExecutor) recordChildExecutionStarted(
 				initiatedAttributes.WorkflowType,
 				task.InitiatedID,
 				initiatedAttributes.Header,
+				clock,
 			)
 
 			return err
@@ -902,6 +908,7 @@ func (t *transferQueueActiveTaskExecutor) recordStartChildExecutionFailed(
 func (t *transferQueueActiveTaskExecutor) createFirstWorkflowTask(
 	namespaceID string,
 	execution *commonpb.WorkflowExecution,
+	clock int64,
 ) error {
 
 	ctx, cancel := context.WithTimeout(context.Background(), transferActiveTaskDefaultTimeout)
@@ -910,6 +917,7 @@ func (t *transferQueueActiveTaskExecutor) createFirstWorkflowTask(
 		NamespaceId:         namespaceID,
 		WorkflowExecution:   execution,
 		IsFirstWorkflowTask: true,
+		Clock:               clock,
 	})
 
 	if err != nil {
@@ -1189,7 +1197,7 @@ func (t *transferQueueActiveTaskExecutor) startWorkflowWithRetry(
 	targetNamespace namespace.Name,
 	childInfo *persistencespb.ChildExecutionInfo,
 	attributes *historypb.StartChildWorkflowExecutionInitiatedEventAttributes,
-) (string, error) {
+) (string, int64, error) {
 	request := common.CreateHistoryStartWorkflowRequest(
 		task.TargetNamespaceID,
 		&workflowservice.StartWorkflowExecutionRequest{
@@ -1234,9 +1242,9 @@ func (t *transferQueueActiveTaskExecutor) startWorkflowWithRetry(
 
 	err = backoff.Retry(op, workflow.PersistenceOperationRetryPolicy, common.IsPersistenceTransientError)
 	if err != nil {
-		return "", err
+		return "", 0, err
 	}
-	return response.GetRunId(), nil
+	return response.GetRunId(), response.GetClock(), nil
 }
 
 func (t *transferQueueActiveTaskExecutor) resetWorkflow(

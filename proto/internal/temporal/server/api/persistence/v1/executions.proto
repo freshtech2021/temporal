@@ -276,6 +276,7 @@ message ChildExecutionInfo {
     string workflow_type_name = 10;
     temporal.api.enums.v1.ParentClosePolicy parent_close_policy = 11;
     int64 initiated_id = 12;
+    int64 clock = 13;
 }
 
 // request_cancel_map column

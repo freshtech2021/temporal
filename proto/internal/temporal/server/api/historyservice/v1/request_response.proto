@@ -64,6 +64,7 @@ message StartWorkflowExecutionRequest {
 
 message StartWorkflowExecutionResponse {
     string run_id = 1;
+    int64 clock = 2;
 }
 
 message GetMutableStateRequest {
@@ -306,6 +307,7 @@ message ScheduleWorkflowTaskRequest {
     string namespace_id = 1;
     temporal.api.common.v1.WorkflowExecution workflow_execution = 2;
     bool is_first_workflow_task = 3;
+    int64 clock = 4;
 }
 
 message ScheduleWorkflowTaskResponse {
