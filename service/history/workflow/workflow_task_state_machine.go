@@ -319,6 +319,7 @@ func (m *workflowTaskStateMachine) AddWorkflowTaskScheduledEvent(
 
 func (m *workflowTaskStateMachine) AddFirstWorkflowTaskScheduled(
 	startEvent *historypb.HistoryEvent,
+	parentClock int64,
 ) error {
 	// handle first workflow task case, i.e. possible delayed workflow task
 	//
@@ -351,6 +352,7 @@ func (m *workflowTaskStateMachine) AddFirstWorkflowTaskScheduled(
 			return err
 		}
 	}
+	m.ms.executionInfo.ParentClock = parentClock
 
 	return nil
 }

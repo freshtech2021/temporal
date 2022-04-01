@@ -490,6 +490,7 @@ func (e *historyEngineImpl) generateFirstWorkflowTask(
 		// WorkflowTask is only created when it is not a Child Workflow and no backoff is needed
 		if err := mutableState.AddFirstWorkflowTaskScheduled(
 			startEvent,
+			0,
 		); err != nil {
 			return err
 		}
@@ -1503,7 +1504,7 @@ func (e *historyEngineImpl) ScheduleWorkflowTask(
 	if err != nil {
 		return err
 	}
-	if req.GetClock() >= currentClock {
+	if req.GetChildClock() >= currentClock {
 		e.shard.Unload()
 		return &persistence.ShardOwnershipLostError{
 			ShardID: e.shard.GetShardID(),

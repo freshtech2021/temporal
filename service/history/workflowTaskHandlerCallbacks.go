@@ -146,6 +146,7 @@ func (handler *workflowTaskHandlerCallbacksImpl) handleWorkflowTaskScheduled(
 			}
 			if err := mutableState.AddFirstWorkflowTaskScheduled(
 				startEvent,
+				req.GetParentClock(),
 			); err != nil {
 				return nil, err
 			}

@@ -307,7 +307,8 @@ message ScheduleWorkflowTaskRequest {
     string namespace_id = 1;
     temporal.api.common.v1.WorkflowExecution workflow_execution = 2;
     bool is_first_workflow_task = 3;
-    int64 clock = 4;
+    int64 parent_clock = 4;
+    int64 child_clock = 5;
 }
 
 message ScheduleWorkflowTaskResponse {

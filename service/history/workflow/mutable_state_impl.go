@@ -1430,7 +1430,7 @@ func (e *MutableStateImpl) addWorkflowExecutionStartedEventForContinueAsNew(
 	if err != nil {
 		return nil, err
 	}
-	if err = e.AddFirstWorkflowTaskScheduled(event); err != nil {
+	if err = e.AddFirstWorkflowTaskScheduled(event, parentExecutionInfo.GetClock()); err != nil {
 		return nil, err
 	}
 
@@ -1612,12 +1612,13 @@ func (e *MutableStateImpl) ReplicateWorkflowExecutionStartedEvent(
 
 func (e *MutableStateImpl) AddFirstWorkflowTaskScheduled(
 	startEvent *historypb.HistoryEvent,
+	parentClock int64,
 ) error {
 	opTag := tag.WorkflowActionWorkflowTaskScheduled
 	if err := e.checkMutability(opTag); err != nil {
 		return err
 	}
-	return e.workflowTaskManager.AddFirstWorkflowTaskScheduled(startEvent)
+	return e.workflowTaskManager.AddFirstWorkflowTaskScheduled(startEvent, parentClock)
 }
 
 func (e *MutableStateImpl) AddWorkflowTaskScheduledEvent(

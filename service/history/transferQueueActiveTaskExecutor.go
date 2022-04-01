@@ -43,6 +43,7 @@ import (
 	"go.temporal.io/server/api/matchingservice/v1"
 	persistencespb "go.temporal.io/server/api/persistence/v1"
 	workflowspb "go.temporal.io/server/api/workflow/v1"
+
 	"go.temporal.io/server/common"
 	"go.temporal.io/server/common/backoff"
 	"go.temporal.io/server/common/log"
@@ -664,10 +665,19 @@ func (t *transferQueueActiveTaskExecutor) processStartChildExecution(
 		// release the context lock since we no longer need mutable state builder and
 		// the rest of logic is making RPC call, which takes time.
 		release(nil)
-		return t.createFirstWorkflowTask(task.TargetNamespaceID, childExecution, childInfo.Clock)
+		parentClock, err := t.shard.GenerateTaskID()
+		if err != nil {
+			return err
+		}
+		return t.createFirstWorkflowTask(
+			task.TargetNamespaceID,
+			childExecution,
+			parentClock,
+			childInfo.Clock,
+		)
 	}
 
-	childRunID, clock, err := t.startWorkflowWithRetry(
+	childRunID, childClock, err := t.startWorkflowWithRetry(
 		task,
 		parentNamespaceName,
 		targetNamespaceName,
@@ -690,7 +700,7 @@ func (t *transferQueueActiveTaskExecutor) processStartChildExecution(
 		tag.WorkflowID(attributes.WorkflowId), tag.WorkflowRunID(childRunID))
 
 	// Child execution is successfully started, record ChildExecutionStartedEvent in parent execution
-	err = t.recordChildExecutionStarted(ctx, task, context, attributes, childRunID, clock)
+	err = t.recordChildExecutionStarted(ctx, task, context, attributes, childRunID, childClock)
 	if err != nil {
 		return err
 	}
@@ -699,13 +709,18 @@ func (t *transferQueueActiveTaskExecutor) processStartChildExecution(
 	// release the context lock since we no longer need mutable state builder and
 	// the rest of logic is making RPC call, which takes time.
 	release(nil)
+	parentClock, err := t.shard.GenerateTaskID()
+	if err != nil {
+		return err
+	}
 	return t.createFirstWorkflowTask(
 		task.TargetNamespaceID,
 		&commonpb.WorkflowExecution{
 			WorkflowId: task.TargetWorkflowID,
 			RunId:      childRunID,
 		},
-		clock,
+		parentClock,
+		childClock,
 	)
 }
 
@@ -910,7 +925,8 @@ func (t *transferQueueActiveTaskExecutor) recordStartChildExecutionFailed(
 func (t *transferQueueActiveTaskExecutor) createFirstWorkflowTask(
 	namespaceID string,
 	execution *commonpb.WorkflowExecution,
-	clock int64,
+	parentClock int64,
+	childClock int64,
 ) error {
 
 	ctx, cancel := context.WithTimeout(context.Background(), transferActiveTaskDefaultTimeout)
@@ -919,7 +935,8 @@ func (t *transferQueueActiveTaskExecutor) createFirstWorkflowTask(
 		NamespaceId:         namespaceID,
 		WorkflowExecution:   execution,
 		IsFirstWorkflowTask: true,
-		Clock:               clock,
+		ParentClock:         parentClock,
+		ChildClock:          childClock,
 	})
 
 	if err != nil {

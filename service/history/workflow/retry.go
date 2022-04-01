@@ -277,7 +277,7 @@ func SetupNewWorkflowForRetryOrCron(
 	if err != nil {
 		return serviceerror.NewInternal("Failed to add workflow execution started event.")
 	}
-	if err = newMutableState.AddFirstWorkflowTaskScheduled(event); err != nil {
+	if err = newMutableState.AddFirstWorkflowTaskScheduled(event, previousExecutionInfo.ParentClock); err != nil {
 		return err
 	}
 
