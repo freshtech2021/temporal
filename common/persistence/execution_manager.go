@@ -469,24 +469,28 @@ func (m *executionManagerImpl) SerializeWorkflowMutation( // unexport
 		WorkflowID:  input.ExecutionInfo.GetWorkflowId(),
 		RunID:       input.ExecutionState.GetRunId(),
 
-		UpsertActivityInfos:       make(map[int64]*commonpb.DataBlob),
-		UpsertTimerInfos:          make(map[string]*commonpb.DataBlob),
-		UpsertChildExecutionInfos: make(map[int64]*commonpb.DataBlob),
-		UpsertRequestCancelInfos:  make(map[int64]*commonpb.DataBlob),
-		UpsertSignalInfos:         make(map[int64]*commonpb.DataBlob),
+		UpsertActivityInfos: make(map[int64]*commonpb.DataBlob, len(input.UpsertActivityInfos)),
+		DeleteActivityInfos: make(map[int64]struct{}, len(input.DeleteActivityInfos)),
+
+		UpsertTimerInfos: make(map[string]*commonpb.DataBlob, len(input.UpsertTimerInfos)),
+		DeleteTimerInfos: make(map[string]struct{}, len(input.DeleteTimerInfos)),
+
+		UpsertChildExecutionInfos: make(map[int64]*commonpb.DataBlob, len(input.UpsertChildExecutionInfos)),
+		DeleteChildExecutionInfos: make(map[int64]struct{}, len(input.DeleteChildExecutionInfos)),
+
+		UpsertRequestCancelInfos: make(map[int64]*commonpb.DataBlob, len(input.UpsertRequestCancelInfos)),
+		DeleteRequestCancelInfos: make(map[int64]struct{}, len(input.DeleteRequestCancelInfos)),
+
+		UpsertSignalInfos: make(map[int64]*commonpb.DataBlob, len(input.UpsertSignalInfos)),
+		DeleteSignalInfos: make(map[int64]struct{}, len(input.DeleteSignalInfos)),
+
+		UpsertSignalRequestedIDs: make(map[string]struct{}, len(input.UpsertSignalRequestedIDs)),
+		DeleteSignalRequestedIDs: make(map[string]struct{}, len(input.DeleteSignalRequestedIDs)),
+
+		ClearBufferedEvents: input.ClearBufferedEvents,
 
 		ExecutionInfo:  input.ExecutionInfo,
 		ExecutionState: input.ExecutionState,
-
-		DeleteActivityInfos:       input.DeleteActivityInfos,
-		DeleteTimerInfos:          input.DeleteTimerInfos,
-		DeleteChildExecutionInfos: input.DeleteChildExecutionInfos,
-		DeleteRequestCancelInfos:  input.DeleteRequestCancelInfos,
-		DeleteSignalInfos:         input.DeleteSignalInfos,
-		DeleteSignalRequestedIDs:  input.DeleteSignalRequestedIDs,
-
-		UpsertSignalRequestedIDs: input.UpsertSignalRequestedIDs,
-		ClearBufferedEvents:      input.ClearBufferedEvents,
 
 		Tasks: tasks,
 
@@ -511,6 +515,10 @@ func (m *executionManagerImpl) SerializeWorkflowMutation( // unexport
 		}
 		result.UpsertActivityInfos[key] = blob
 	}
+	for key := range input.DeleteActivityInfos {
+		result.DeleteActivityInfos[key] = struct{}{}
+	}
+
 	for key, info := range input.UpsertTimerInfos {
 		blob, err := m.serializer.TimerInfoToBlob(info, enumspb.ENCODING_TYPE_PROTO3)
 		if err != nil {
@@ -518,6 +526,10 @@ func (m *executionManagerImpl) SerializeWorkflowMutation( // unexport
 		}
 		result.UpsertTimerInfos[key] = blob
 	}
+	for key := range input.DeleteTimerInfos {
+		result.DeleteTimerInfos[key] = struct{}{}
+	}
+
 	for key, info := range input.UpsertChildExecutionInfos {
 		blob, err := m.serializer.ChildExecutionInfoToBlob(info, enumspb.ENCODING_TYPE_PROTO3)
 		if err != nil {
@@ -525,6 +537,10 @@ func (m *executionManagerImpl) SerializeWorkflowMutation( // unexport
 		}
 		result.UpsertChildExecutionInfos[key] = blob
 	}
+	for key := range input.DeleteChildExecutionInfos {
+		result.DeleteChildExecutionInfos[key] = struct{}{}
+	}
+
 	for key, info := range input.UpsertRequestCancelInfos {
 		blob, err := m.serializer.RequestCancelInfoToBlob(info, enumspb.ENCODING_TYPE_PROTO3)
 		if err != nil {
@@ -532,12 +548,26 @@ func (m *executionManagerImpl) SerializeWorkflowMutation( // unexport
 		}
 		result.UpsertRequestCancelInfos[key] = blob
 	}
+	for key := range input.DeleteRequestCancelInfos {
+		result.DeleteRequestCancelInfos[key] = struct{}{}
+	}
+
 	for key, info := range input.UpsertSignalInfos {
 		blob, err := m.serializer.SignalInfoToBlob(info, enumspb.ENCODING_TYPE_PROTO3)
 		if err != nil {
 			return nil, err
 		}
 		result.UpsertSignalInfos[key] = blob
+	}
+	for key := range input.DeleteSignalInfos {
+		result.DeleteSignalInfos[key] = struct{}{}
+	}
+
+	for key := range input.UpsertSignalRequestedIDs {
+		result.UpsertSignalRequestedIDs[key] = struct{}{}
+	}
+	for key := range input.DeleteSignalRequestedIDs {
+		result.DeleteSignalRequestedIDs[key] = struct{}{}
 	}
 
 	if len(input.NewBufferedEvents) > 0 {
@@ -572,11 +602,11 @@ func (m *executionManagerImpl) SerializeWorkflowSnapshot( // unexport
 		WorkflowID:  input.ExecutionInfo.GetWorkflowId(),
 		RunID:       input.ExecutionState.GetRunId(),
 
-		ActivityInfos:       make(map[int64]*commonpb.DataBlob),
-		TimerInfos:          make(map[string]*commonpb.DataBlob),
-		ChildExecutionInfos: make(map[int64]*commonpb.DataBlob),
-		RequestCancelInfos:  make(map[int64]*commonpb.DataBlob),
-		SignalInfos:         make(map[int64]*commonpb.DataBlob),
+		ActivityInfos:       make(map[int64]*commonpb.DataBlob, len(input.ActivityInfos)),
+		TimerInfos:          make(map[string]*commonpb.DataBlob, len(input.TimerInfos)),
+		ChildExecutionInfos: make(map[int64]*commonpb.DataBlob, len(input.ChildExecutionInfos)),
+		RequestCancelInfos:  make(map[int64]*commonpb.DataBlob, len(input.RequestCancelInfos)),
+		SignalInfos:         make(map[int64]*commonpb.DataBlob, len(input.SignalInfos)),
 
 		ExecutionInfo:      input.ExecutionInfo,
 		ExecutionState:     input.ExecutionState,
