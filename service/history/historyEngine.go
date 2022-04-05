@@ -2428,7 +2428,13 @@ func (e *historyEngineImpl) DeleteWorkflowExecution(
 func (e *historyEngineImpl) RecordChildExecutionCompleted(
 	ctx context.Context,
 	completionRequest *historyservice.RecordChildExecutionCompletedRequest,
-) error {
+) (retError error) {
+
+	workflowKey := definition.NewWorkflowKey(
+		completionRequest.NamespaceId,
+		completionRequest.WorkflowExecution.WorkflowId,
+		completionRequest.WorkflowExecution.RunId,
+	)
 
 	currentClock, err := e.shard.GenerateTaskID()
 	if err != nil {
@@ -2444,6 +2450,7 @@ func (e *historyEngineImpl) RecordChildExecutionCompleted(
 
 	namespaceEntry, err := e.getActiveNamespaceEntry(namespace.ID(completionRequest.GetNamespaceId()))
 	if err != nil {
+		e.logger.Error(fmt.Sprintf("#### RecordChildExecutionCompleted already scheduled ####:%v", workflowKey), tag.Error(err))
 		return err
 	}
 	namespaceID := namespaceEntry.ID()
@@ -2453,6 +2460,12 @@ func (e *historyEngineImpl) RecordChildExecutionCompleted(
 		RunId:      completionRequest.WorkflowExecution.RunId,
 	}
 
+	defer func() {
+		if retError != nil {
+			e.logger.Error(fmt.Sprintf("#### RecordChildExecutionCompleted return ####:%v", workflowKey), tag.Error(retError))
+		}
+	}()
+
 	return e.updateWorkflowExecution(
 		ctx,
 		namespaceID,
@@ -2460,6 +2473,7 @@ func (e *historyEngineImpl) RecordChildExecutionCompleted(
 		func(workflowContext workflowContext) (*updateWorkflowAction, error) {
 			mutableState := workflowContext.getMutableState()
 			if !mutableState.IsWorkflowExecutionRunning() {
+				e.logger.Error(fmt.Sprintf("#### RecordChildExecutionCompleted not running ####:%v", workflowKey), tag.Error(consts.ErrWorkflowCompleted))
 				return nil, consts.ErrWorkflowCompleted
 			}
 
@@ -2470,6 +2484,8 @@ func (e *historyEngineImpl) RecordChildExecutionCompleted(
 			// Check mutable state to make sure child execution is in pending child executions
 			ci, isRunning := mutableState.GetChildExecutionInfo(initiatedID)
 			if !isRunning && initiatedID >= mutableState.GetNextEventID() {
+				e.logger.Error(fmt.Sprintf("#### RecordChildExecutionCompleted stale cache ####:%v", workflowKey))
+
 				// possible stale mutable state, try reload mutable state
 				//
 				// TODO: use initiate event ID and version to verify if the child exists or not
@@ -2482,15 +2498,22 @@ func (e *historyEngineImpl) RecordChildExecutionCompleted(
 				workflowContext.getContext().Clear()
 				mutableState, err = workflowContext.reloadMutableState(ctx)
 				if err != nil {
+					e.logger.Error(fmt.Sprintf("#### RecordChildExecutionCompleted stale cache & err ####:%v", workflowKey), tag.Error(err))
 					return nil, err
 				}
 
 				ci, isRunning = mutableState.GetChildExecutionInfo(initiatedID)
 			}
 			if !isRunning || ci.StartedId == common.EmptyEventID {
+				if !isRunning {
+					e.logger.Error(fmt.Sprintf("#### RecordChildExecutionCompleted child not found ####:%v", workflowKey))
+				} else {
+					e.logger.Error(fmt.Sprintf("#### RecordChildExecutionCompleted ci.StartedId == common.EmptyEventID ####:%v", workflowKey))
+				}
 				return nil, serviceerror.NewNotFound("Pending child execution not found.")
 			}
 			if ci.GetStartedWorkflowId() != completedExecution.GetWorkflowId() {
+				e.logger.Error(fmt.Sprintf("#### RecordChildExecutionCompleted child not match ####:%v", workflowKey))
 				return nil, serviceerror.NewNotFound("Pending child execution not found.")
 			}
 
@@ -2513,6 +2536,7 @@ func (e *historyEngineImpl) RecordChildExecutionCompleted(
 			}
 
 			if err != nil {
+				e.logger.Error(fmt.Sprintf("#### RecordChildExecutionCompleted add event ####:%v", workflowKey), tag.Error(err))
 				return nil, err
 			}
 			return &updateWorkflowAction{

@@ -111,10 +111,17 @@ func newWorkflowTaskHandlerCallback(historyEngine *historyEngineImpl) *workflowT
 func (handler *workflowTaskHandlerCallbacksImpl) handleWorkflowTaskScheduled(
 	ctx context.Context,
 	req *historyservice.ScheduleWorkflowTaskRequest,
-) error {
+) (retError error) {
+
+	workflowKey := definition.NewWorkflowKey(
+		req.NamespaceId,
+		req.WorkflowExecution.WorkflowId,
+		req.WorkflowExecution.RunId,
+	)
 
 	namespaceEntry, err := handler.historyEngine.getActiveNamespaceEntry(namespace.ID(req.GetNamespaceId()))
 	if err != nil {
+		handler.logger.Error(fmt.Sprintf("#### ScheduleWorkflowTask namespace ####:%v", workflowKey), tag.Error(err))
 		return err
 	}
 	namespaceID := namespaceEntry.ID()
@@ -123,6 +130,11 @@ func (handler *workflowTaskHandlerCallbacksImpl) handleWorkflowTaskScheduled(
 		WorkflowId: req.WorkflowExecution.WorkflowId,
 		RunId:      req.WorkflowExecution.RunId,
 	}
+	defer func() {
+		if retError != nil {
+			handler.logger.Error(fmt.Sprintf("#### ScheduleWorkflowTask return ####:%v", workflowKey), tag.Error(retError))
+		}
+	}()
 
 	return handler.historyEngine.updateWorkflowExecution(
 		ctx,
@@ -131,10 +143,12 @@ func (handler *workflowTaskHandlerCallbacksImpl) handleWorkflowTaskScheduled(
 		func(workflowContext workflowContext) (*updateWorkflowAction, error) {
 			mutableState := workflowContext.getMutableState()
 			if !mutableState.IsWorkflowExecutionRunning() {
+				handler.logger.Error(fmt.Sprintf("#### ScheduleWorkflowTask not running ####:%v", workflowKey), tag.Error(consts.ErrWorkflowCompleted))
 				return nil, consts.ErrWorkflowCompleted
 			}
 
 			if mutableState.HasProcessedOrPendingWorkflowTask() {
+				handler.logger.Error(fmt.Sprintf("#### ScheduleWorkflowTask already scheduled ####:%v", workflowKey))
 				return &updateWorkflowAction{
 					noop: true,
 				}, nil
@@ -142,12 +156,14 @@ func (handler *workflowTaskHandlerCallbacksImpl) handleWorkflowTaskScheduled(
 
 			startEvent, err := mutableState.GetStartEvent(ctx)
 			if err != nil {
+				handler.logger.Error(fmt.Sprintf("#### ScheduleWorkflowTask no start event ####:%v", workflowKey), tag.Error(err))
 				return nil, err
 			}
 			if err := mutableState.AddFirstWorkflowTaskScheduled(
 				startEvent,
 				req.GetParentClock(),
 			); err != nil {
+				handler.logger.Error(fmt.Sprintf("#### ScheduleWorkflowTask add first task schedule event ####:%v", workflowKey), tag.Error(err))
 				return nil, err
 			}
 
