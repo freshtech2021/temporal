@@ -556,10 +556,6 @@ func (e *historyEngineImpl) StartWorkflowExecution(
 	createMode := persistence.CreateWorkflowModeBrandNew
 	prevRunID := ""
 	prevLastWriteVersion := int64(0)
-	clock, err := e.shard.GenerateTaskID()
-	if err != nil {
-		return nil, err
-	}
 	err = weContext.CreateWorkflowExecution(
 		ctx,
 		now,
@@ -571,6 +567,10 @@ func (e *historyEngineImpl) StartWorkflowExecution(
 		newWorkflowEventsSeq,
 	)
 	if err == nil {
+		clock, err := e.shard.GenerateTaskID()
+		if err != nil {
+			return nil, err
+		}
 		return &historyservice.StartWorkflowExecutionResponse{
 			RunId: execution.GetRunId(),
 			Clock: clock,
@@ -584,6 +584,10 @@ func (e *historyEngineImpl) StartWorkflowExecution(
 
 	// handle CurrentWorkflowConditionFailedError
 	if t.RequestID == request.GetRequestId() {
+		clock, err := e.shard.GenerateTaskID()
+		if err != nil {
+			return nil, err
+		}
 		return &historyservice.StartWorkflowExecutionResponse{
 			RunId: t.RunID,
 			Clock: clock,
@@ -631,6 +635,10 @@ func (e *historyEngineImpl) StartWorkflowExecution(
 		)
 		switch err {
 		case nil:
+			clock, err := e.shard.GenerateTaskID()
+			if err != nil {
+				return nil, err
+			}
 			return &historyservice.StartWorkflowExecutionResponse{
 				RunId: execution.GetRunId(),
 				Clock: clock,
@@ -653,6 +661,10 @@ func (e *historyEngineImpl) StartWorkflowExecution(
 		newWorkflow,
 		newWorkflowEventsSeq,
 	); err != nil {
+		return nil, err
+	}
+	clock, err := e.shard.GenerateTaskID()
+	if err != nil {
 		return nil, err
 	}
 	return &historyservice.StartWorkflowExecutionResponse{
